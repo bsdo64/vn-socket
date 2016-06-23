@@ -14,3 +14,14 @@ io.on('connection', function (socket) {
   });
 });
 
+var notiIo = io.of('/noti');
+
+notiIo.on('connection', function (socket) {
+  console.log('Noti socket is opened');
+
+  socket.on('join_room', { will: 'be received by everyone'});
+
+  socket.on('disconnect', function () {
+    notiIo.emit('user disconnected');
+  });
+});
