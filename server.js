@@ -19,9 +19,12 @@ var notiIo = io.of('/noti');
 notiIo.on('connection', function (socket) {
   console.log('Noti socket is opened');
 
-  socket.on('join_room', { will: 'be received by everyone'});
+  socket.on('join_room', function () {
+    console.log('client want to join_room');
+  });
 
   socket.on('disconnect', function () {
-    notiIo.emit('user disconnected');
+    console.log('user disconnected');
+    //notiIo.emit('user disconnected');
   });
 });
