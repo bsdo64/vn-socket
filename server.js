@@ -31,11 +31,12 @@ notiIo.on('connection', function (socket) {
 
 
   socket.on('join_room', function () {
-    console.log(socket.handshake.query);
-    const query = socket.handshake.query;
-    if (query.sessionId && query.token) {
-      const sessionId = cookieParser.signedCookie(query.sessionId, '1234567890QWERTY');
-      const token = query.token;
+    console.log(socket.request);
+    const headers = socket.request.headers;
+    const cookie = Cookie.parse(headers.cookie);
+    if (cookie.sessionId && cookie.token) {
+      const sessionId = cookieParser.signedCookie(cookie.sessionId, '1234567890QWERTY');
+      const token = cookie.token;
 
       M
         .User
