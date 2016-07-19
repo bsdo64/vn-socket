@@ -31,7 +31,7 @@ notiIo.on('connection', function (socket) {
 
 
   socket.on('join_room', function () {
-    console.log(socket.request);
+
     const headers = socket.request.headers;
     const cookie = Cookie.parse(headers.cookie);
     if (cookie.sessionId && cookie.token) {
