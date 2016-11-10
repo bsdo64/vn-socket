@@ -33,6 +33,7 @@ class VenalinkActivate {
               active.push(venalinks[key].id);
               self.venalinkTimer.push({
                 key: venalinks[key].id,
+                venalink: venalinks[key],
                 timer: new CronJob(venalinks[key].terminate_at, function() {
                     Db.tc_venalinks.query().patch({is_activate: false}).where({id: venalinks[key].id});
                   },
@@ -131,16 +132,44 @@ class VenalinkActivate {
 
     })
   }
+
+  printTimer(sec) {
+    setInterval(() => {
+      console.log('reserved venalink count: ' + this.venalinkTimer.length);
+      const fastVenalink = this.venalinkTimer.sort(function (a, b) {
+        return new Date(a.venalink.terminate_at) - new Date(b.venalink.terminate_at);
+      })[0];
+      console.log('Fastest from now: ', fastVenalink.venalink);
+    }, sec * 1000)
+  }
+
+  setNewVenalink(venalink) {
+    const self = this;
+
+    this.venalinkTimer.push({
+      key: venalink.id,
+      venalink: venalink,
+      timer: new CronJob(new Date(venalink.terminate_at), function() {
+          Db.tc_venalinks.query().patch({is_activate: false}).where({id: venalink.id});
+        },
+        function () {
+          self.venalinkTimer = self.venalinkTimer.filter(v => v.key !== venalink.id)
+        },
+        true /* Start the job right now */
+      )
+    })
+  }
 }
 
 const v = new VenalinkActivate();
 v.init();
+v.printTimer(5);
 
 Venalink.on('connection', function (socket) {
 
-  socket.on('add venalink cron job', function (result) {
-
-    Venalink.emit('comment_write noti', result.notis);
+  socket.on('new venalink', function (result) {
+    console.log(result.venalink);
+    v.setNewVenalink(result.venalink);
   });
 
   socket.on('disconnect', function () {
