@@ -139,7 +139,9 @@ class VenalinkActivate {
       const fastVenalink = this.venalinkTimer.sort(function (a, b) {
         return new Date(a.venalink.terminate_at) - new Date(b.venalink.terminate_at);
       })[0];
-      console.log('Fastest from now: ', fastVenalink.venalink);
+      if (fastVenalink) {
+        console.log('Fastest from now: ', fastVenalink.venalink);
+      }
     }, sec * 1000)
   }
 
