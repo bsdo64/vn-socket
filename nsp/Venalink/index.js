@@ -62,8 +62,6 @@ class VenalinkActivate {
         }
       }
 
-      console.log(self.venalinkTimer);
-
       yield Db.tc_venalinks.query().patch({is_activate: false}).whereIn('id', terminated);
 
       const terminatedVenalinks = yield Db.tc_venalinks.query().whereIn('id', terminated);
@@ -169,9 +167,9 @@ v.printTimer(5);
 
 Venalink.on('connection', function (socket) {
 
-  socket.on('new venalink', function (result) {
-    console.log(result.venalink);
-    v.setNewVenalink(result.venalink);
+  socket.on('add venalink cron job', function (venalink) {
+
+    v.setNewVenalink(venalink);
   });
 
   socket.on('disconnect', function () {
