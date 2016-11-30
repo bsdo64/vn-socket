@@ -24,7 +24,7 @@ const pointIo = io
 
         M
           .User
-          .checkUserByToken(token, sessionId)
+          .checkUserAuth(token, sessionId)
           .then((user) => {
             console.log('Join the point socket room : ', user.nick);
             socket.join(user.nick);
