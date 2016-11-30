@@ -10,25 +10,30 @@ notiIo.on('connection', function (socket) {
 
   socket.on('send noti', function (result) {
 
-    notiIo.to(result.to).emit('comment_write noti', result.notis);
+    const { to, notis, userId } = result;
+    notiIo.to(to).emit('comment_write noti', { notis, userId });
   });
 
 
   socket.on('join_room', function () {
     const headers = socket.request.headers;
     const cookie = Cookie.parse(headers.cookie);
-    console.log(cookie.sessionId && cookie.token);
     if (cookie.sessionId && cookie.token) {
       const sessionId = cookieParser.signedCookie(cookie.sessionId, '1234567890QWERTY');
       const token = cookie.token;
 
+      console.log('sessionId: ', sessionId);
+      console.log('token: ', token);
       M
         .User
-        .checkUserAuth(token, sessionId)
+        .checkUserAuth(sessionId, token)
         .then((user) => {
           console.log('Join the noti socket room : ', user.nick);
           socket.join(user.nick);
-        });
+        })
+        .catch(err => {
+          console.error(err);
+        })
     }
   });
 

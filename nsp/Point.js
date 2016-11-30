@@ -10,8 +10,8 @@ const pointIo = io
     console.log('Point socket is opened');
 
     socket.on('send point', function (result) {
-      console.log(result);
-      pointIo.to(result.to).emit('receive point', result.data);
+      const { to, data, userId } = result;
+      pointIo.to(to).emit('receive point', {data, userId});
     });
 
     socket.on('join_room', function () {
@@ -22,13 +22,17 @@ const pointIo = io
         const sessionId = cookieParser.signedCookie(cookie.sessionId, '1234567890QWERTY');
         const token = cookie.token;
 
+
         M
           .User
-          .checkUserAuth(token, sessionId)
+          .checkUserAuth(sessionId, token)
           .then((user) => {
             console.log('Join the point socket room : ', user.nick);
             socket.join(user.nick);
-          });
+          })
+          .catch(err => {
+            console.error(err);
+          })
       }
     });
 

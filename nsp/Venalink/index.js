@@ -167,9 +167,9 @@ v.printTimer(5);
 
 Venalink.on('connection', function (socket) {
 
-  socket.on('add venalink cron job', function (venalink) {
+  socket.on('add venalink cron job', function (data) {
 
-    v.setNewVenalink(venalink);
+    v.setNewVenalink(data.venalink);
   });
 
   socket.on('disconnect', function () {
