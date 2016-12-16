@@ -1,6 +1,7 @@
 const io = require('../index').io;
 const cookieParser = require('cookie-parser');
 const Cookie = require('cookie');
+const moment = require('moment');
 const M = require('vn-api-model');
 const Db = M.Post.Db;
 const co = require('co');
@@ -9,14 +10,81 @@ const CronJob = require('cron').CronJob;
 const Venalink = io.of('/venalink');
 
 class VenalinkActivate {
-  constructor() {
+  constructor(socket) {
     this.venalinkTimer = [];
+    this.socket = socket;
+  }
+
+  $refundTerminatedVenalink(venalink) {
+    return co.call(this, function* () {
+
+      yield Db.tc_venalinks.query().patch({is_activate: false}).where({ id: venalink.id });
+
+      if (venalink.total_refunded_r !== venalink.total_remain_r) {
+
+        let trade = yield Db
+          .tc_trades
+          .query()
+          .insert({
+            action: 'refundVenalink',
+            sender_type: 'venacle',
+            sender_id: null,
+            target_type: 'venalink',
+            target_id: venalink.id,
+            receiver_type: 'user',
+            receiver_id: venalink.user_id,
+            amount_r: venalink.total_remain_r,
+            amount_t: 0,
+            created_at: new Date()
+          });
+
+        let beforeAccount = yield Db
+          .tc_user_point_accounts
+          .query()
+          .where({
+            user_id: venalink.user_id
+          })
+          .orderBy('created_at', 'DESC')
+          .first();
+
+        let newAccount = yield Db
+          .tc_user_point_accounts
+          .query()
+          .insert({
+            type: 'deposit',
+            point_type: 'RP',
+            total_r: beforeAccount.total_r + trade.amount_r,
+            total_t: beforeAccount.total_t + trade.amount_t,
+            trade_id: trade.id,
+            user_id: venalink.user_id,
+            created_at: new Date()
+          });
+
+        let refundedVenalink = yield Db
+          .tc_venalinks
+          .query()
+          .patchAndFetchById(venalink.id, {
+            total_refunded_r: trade.amount_r
+          });
+
+        let trendbox = yield Db
+          .tc_user_trendboxes
+          .query()
+          .patch({
+            T: newAccount.total_t,
+            R: newAccount.total_r,
+          })
+          .where({user_id: venalink.user_id});
+
+        Venalink.emit('terminate venalink', {refundedVenalink, });
+      }
+    })
   }
 
   init() {
     const self = this;
 
-    return co(function* () {
+    return co.call(this, function* () {
       const venalinks = yield Db.tc_venalinks.query();
 
       let active = [], terminated = [];
@@ -34,8 +102,8 @@ class VenalinkActivate {
               self.venalinkTimer.push({
                 key: venalinks[key].id,
                 venalink: venalinks[key],
-                timer: new CronJob(venalinks[key].terminate_at, function() {
-                    Db.tc_venalinks.query().patch({is_activate: false}).where({id: venalinks[key].id});
+                timer: new CronJob(moment().add(5, 'seconds').toDate()/*venalinks[key].terminate_at*/, () => {
+                    this.$refundTerminatedVenalink(venalinks[key])
                   },
                   function () {
                     self.venalinkTimer = self.venalinkTimer.filter(v => v.key !== venalinks[key].id)
@@ -62,72 +130,16 @@ class VenalinkActivate {
         }
       }
 
-      yield Db.tc_venalinks.query().patch({is_activate: false}).whereIn('id', terminated);
-
       const terminatedVenalinks = yield Db.tc_venalinks.query().whereIn('id', terminated);
       for (let key in terminatedVenalinks) {
 
-        if (terminatedVenalinks[key].total_refunded_r !== terminatedVenalinks[key].total_remain_r) {
+        let venalink = terminatedVenalinks[key];
 
-          let trade = yield Db
-            .tc_trades
-            .query()
-            .insert({
-              action: 'refundVenalink',
-              sender_type: 'venacle',
-              sender_id: null,
-              target_type: 'venalink',
-              target_id: terminatedVenalinks[key].id,
-              receiver_type: 'user',
-              receiver_id: terminatedVenalinks[key].user_id,
-              amount_r: terminatedVenalinks[key].total_remain_r,
-              amount_t: 0,
-              created_at: new Date()
-            });
-
-          let beforeAccount = yield Db
-            .tc_user_point_accounts
-            .query()
-            .where({
-              user_id: terminatedVenalinks[key].user_id
-            })
-            .orderBy('created_at', 'DESC')
-            .first();
-
-          let newAccount = yield Db
-            .tc_user_point_accounts
-            .query()
-            .insert({
-              type: 'deposit',
-              point_type: 'RP',
-              total_r: beforeAccount.total_r + trade.amount_r,
-              total_t: beforeAccount.total_t + trade.amount_t,
-              trade_id: trade.id,
-              user_id: terminatedVenalinks[key].user_id,
-              created_at: new Date()
-            });
-
-          let refundedVenalink = yield Db
-            .tc_venalinks
-            .query()
-            .patch({
-              total_refunded_r: trade.amount_r
-            })
-            .where({
-              id: terminatedVenalinks[key].id
-            });
-
-          yield Db
-            .tc_user_trendboxes
-            .query()
-            .patch({
-              T: newAccount.total_t,
-              R: newAccount.total_r,
-            })
-            .where({user_id: terminatedVenalinks[key].user_id});
-        }
+        this.$refundTerminatedVenalink(venalink);
       }
 
+    }).catch(err => {
+      console.log(err);
     })
   }
 
@@ -149,8 +161,11 @@ class VenalinkActivate {
     this.venalinkTimer.push({
       key: venalink.id,
       venalink: venalink,
-      timer: new CronJob(new Date(venalink.terminate_at), function() {
-          Db.tc_venalinks.query().patch({is_activate: false}).where({id: venalink.id});
+      timer: new CronJob(new Date(venalink.terminate_at), () => {
+
+        this.$refundTerminatedVenalink(venalink);
+        this.venalinkTimer = this.venalinkTimer.filter(v => v.key !== venalink.id);
+
         },
         function () {
           self.venalinkTimer = self.venalinkTimer.filter(v => v.key !== venalink.id)
@@ -161,6 +176,7 @@ class VenalinkActivate {
   }
 }
 
+
 const v = new VenalinkActivate();
 v.init();
 v.printTimer(5);
@@ -169,7 +185,7 @@ Venalink.on('connection', function (socket) {
 
   socket.on('add venalink cron job', function (data) {
 
-    v.setNewVenalink(data.venalink);
+    v.setNewVenalink(data.venalink, socket);
   });
 
   socket.on('disconnect', function () {
