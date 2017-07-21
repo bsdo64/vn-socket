@@ -16,7 +16,7 @@
     "cron": "^1.1.1",
     "moment": "^2.18.1",
     "socket.io": "^1.7.4",
-    "vn-api-model": "git+ssh://git@github.com/bsdo64/vn-api-model"
+    "vn-api-model": "^1.0.9"
   },
   "repository": "git@github.com:bsdo64/vn-socket.git",
   "devDependencies": {
