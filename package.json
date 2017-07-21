@@ -18,5 +18,8 @@
     "socket.io": "^1.7.4",
     "vn-api-model": "git+ssh://git@github.com/bsdo64/vn-api-model"
   },
-  "repository": "git@github.com:bsdo64/vn-socket.git"
+  "repository": "git@github.com:bsdo64/vn-socket.git",
+  "devDependencies": {
+    "nodemon": "^1.11.0"
+  }
 }
