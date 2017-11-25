@@ -2,7 +2,7 @@ const io = require('../index').io;
 const cookieParser = require('cookie-parser');
 const Cookie = require('cookie');
 const moment = require('moment');
-const Db = require('vn-api-model').Db.Models;
+const Db = require('vn-api-model').Db;
 
 const co = require('co');
 const CronJob = require('cron').CronJob;
