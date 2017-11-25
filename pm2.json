@@ -1,0 +1,10 @@
+{
+  "apps" : [{
+    "name": "socket",
+    "script"      : "index.js",
+    "cwd"         : ".",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }]
+}
